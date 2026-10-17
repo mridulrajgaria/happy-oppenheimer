@@ -1,6 +1,5 @@
-# Local master data may contain personal information; never publish it.
+# The database may contain personal information; keep it local.
 neo_master.db
-master_list.csv
 *.db
 *.sqlite
 *.sqlite3

@@ -89,14 +89,14 @@
 <body>
   <main>
     <header>
-      <div class="eyebrow">Private, in-browser matching</div>
+      <div class="eyebrow">In-browser matching</div>
       <h1>HAPPY OPENHEIMER</h1>
       <p>Match identifiers against your own master list. Import, match, and export without sending your records to a server.</p>
     </header>
 
     <aside class="privacy">
-      <strong>Your data stays in this browser.</strong>
-      The master list is saved on this device only. Uploaded files are read locally and are not sent to GitHub or a database.
+      <strong>The master list is public.</strong>
+      Its IDs and names are published with this site and loaded automatically. Uploaded files are read locally and are not sent to a server.
     </aside>
 
     <section class="panel" aria-labelledby="master-heading">
@@ -106,7 +106,7 @@
       </div>
       <label for="master-file">Add or update a master list (CSV, XLSX, XLS)</label>
       <input id="master-file" type="file" accept=".csv,.xlsx,.xls">
-      <p class="hint">The file should include an ID column and a Name column. Matching IDs are updated; other records are retained.</p>
+      <p class="hint">The file should include an ID column and a Name column. Imported updates are saved on this device; the published master list refreshes IDs it contains on your next visit.</p>
       <p id="master-status" class="status" role="status" aria-live="polite"></p>
       <details>
         <summary>View records stored on this device</summary>
@@ -147,7 +147,7 @@
       <p id="results-status" class="status" role="status" aria-live="polite"></p>
     </section>
 
-    <footer>HAPPY OPENHEIMER runs as a static site. Your browser’s local storage is separate from other users and devices.</footer>
+    <footer>HAPPY OPENHEIMER runs as a static site. The published master list is shared; imported updates are saved separately in each browser.</footer>
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -269,6 +269,37 @@
       return imported;
     }
 
+    async function loadPublishedMaster() {
+      const status = document.getElementById("master-status");
+      setStatus(status, "Loading the published master list…");
+      if (!window.XLSX) throw new Error("The spreadsheet parser did not load. Check your connection and reload the page.");
+      const response = await fetch("./master_list.csv", { cache: "no-store" });
+      if (!response.ok) throw new Error(`Could not load master_list.csv (HTTP ${response.status}).`);
+
+      const workbook = XLSX.read(await response.text(), { type: "string" });
+      const updates = new Map(master.map((record) => [record.id, record.name]));
+      let imported = 0;
+      for (const sheetName of workbook.SheetNames) {
+        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: "" });
+        if (!rows.length) continue;
+        const { idColumn, nameColumn } = findColumns(rows[0]);
+        if (!idColumn || !nameColumn) continue;
+        for (const row of rows) {
+          const id = normalizeId(row[idColumn]);
+          const name = String(row[nameColumn] ?? "").trim();
+          if (id && name) {
+            updates.set(id, name);
+            imported += 1;
+          }
+        }
+      }
+      if (!imported) throw new Error("No records with ID and Name columns were found in master_list.csv.");
+      const updatedMaster = [...updates].sort(([left], [right]) => left.localeCompare(right))
+        .map(([id, name]) => ({ id, name }));
+      saveMaster(updatedMaster);
+      setStatus(status, `Loaded ${imported} records from the published master list and saved them on this device.`);
+    }
+
     function showMatches(ids) {
       latestIdCount = ids.length;
       const lookup = new Map(master.map((record) => [record.id, record.name]));
@@ -343,10 +374,10 @@
     });
 
     document.getElementById("clear-master").addEventListener("click", () => {
-      if (!master.length || !window.confirm("Clear all master records saved in this browser? This cannot be undone.")) return;
+      if (!master.length || !window.confirm("Clear all master records saved in this browser? The published list will load again on your next visit.")) return;
       try {
         saveMaster([]);
-        setStatus(document.getElementById("master-status"), "This device’s master list has been cleared.");
+        setStatus(document.getElementById("master-status"), "This device’s saved list has been cleared. The published list will load again on your next visit.");
       } catch (error) {
         setStatus(document.getElementById("master-status"), error.message, true);
       }
@@ -397,6 +428,13 @@
     });
 
     renderMaster();
+    loadPublishedMaster().catch((error) => {
+      setStatus(
+        document.getElementById("master-status"),
+        `Could not load the published master list: ${error.message}`,
+        true
+      );
+    });
   </script>
 </body>
 </html>

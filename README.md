@@ -1,21 +1,22 @@
 # HAPPY OPENHEIMER
 
-A private, browser-based matcher for identifiers and names. It runs as a static GitHub Pages site; no application server or shared database is used.
+A browser-based matcher for identifiers and names. It runs as a static GitHub Pages site; no application server or shared database is used.
 
 ## Features
 
 - Paste IDs or extract them from XLSX, XLS, CSV, PDF, DOCX, and TXT files.
+- Automatically load the published `master_list.csv` on each visit.
 - Import a CSV or Excel master list containing an ID column and a Name column.
-- Update matching records, retain other records, and save the master list in this browser.
+- Save the loaded and imported master list in this browser for later visits.
 - Copy matching results or download them as an Excel workbook.
 
 ## Privacy and storage
 
-The master list is stored in the current browser's local storage and is not shared with other users or devices. Uploaded files are processed in the browser. The repository intentionally excludes `master_list.csv` and `neo_master.db`, which may contain personal records.
+**The published `master_list.csv` is public. Its IDs and names are included in this GitHub repository and in the public site download.** The site loads that list on each visit and saves a copy in the current browser's local storage. Imported changes are local to that browser; on the next visit, the published list refreshes those IDs that appear in the CSV.
 
-The spreadsheet, PDF, and DOCX parsing libraries are loaded from public CDNs. File contents and saved records are not sent to those services.
+Uploaded files are processed in the browser. The spreadsheet, PDF, and DOCX parsing libraries are loaded from public CDNs; file contents and saved records are not sent to those services. `neo_master.db` remains excluded from GitHub.
 
-Clearing browser site data will remove the locally saved master list. Use **Clear this device’s master list** in the app to remove it explicitly.
+Clearing browser site data removes the locally saved copy; the list will be loaded again from the public CSV on the next visit.
 
 ## GitHub Pages deployment
 
@@ -30,4 +31,4 @@ python -m pip install -r requirements.txt
 python -m streamlit run app.py
 ```
 
-Keep its local database or master list outside public commits.
+The local database remains excluded from public commits. The master CSV is intentionally public so GitHub Pages can load it automatically.
