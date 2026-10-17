@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101321">
+  <title>HAPPY OPENHEIMER</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #101321;
+      color: #f4f5fb;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+      --muted: #a7abc0;
+      --panel: #1a1e30;
+      --line: #34394f;
+      --accent: #a995ff;
+      --accent-strong: #8167ff;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      background:
+        radial-gradient(ellipse at 50% -15%, #413575 0, transparent 48rem),
+        #101321;
+    }
+
+    main { width: min(960px, calc(100% - 32px)); margin: 0 auto; padding: 52px 0 72px; }
+    header { margin-bottom: 28px; }
+    h1 { margin: 0; font-size: clamp(2rem, 6vw, 3.5rem); letter-spacing: .045em; }
+    h2 { margin-top: 0; font-size: 1.1rem; }
+    p { color: var(--muted); line-height: 1.6; }
+    .eyebrow { color: var(--accent); font-size: .78rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+    .privacy, .panel { border: 1px solid var(--line); border-radius: 16px; background: var(--panel); }
+    .privacy { margin: 20px 0 24px; padding: 14px 16px; }
+    .privacy strong { color: #c6bbff; }
+    .panel { margin-top: 18px; padding: 22px; }
+    label { display: block; margin: 0 0 9px; font-weight: 650; }
+    textarea, input[type="file"] {
+      width: 100%;
+      border: 1px solid #484e67;
+      border-radius: 10px;
+      background: #111525;
+      color: #f4f5fb;
+      padding: 12px;
+    }
+    textarea { min-height: 130px; resize: vertical; line-height: 1.5; }
+    input[type="file"] { padding: 10px; }
+    button {
+      border: 0;
+      border-radius: 9px;
+      background: var(--accent-strong);
+      color: white;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 700;
+      padding: 11px 16px;
+    }
+    button:hover { background: #927eff; }
+    button:disabled { cursor: not-allowed; opacity: .5; }
+    button.secondary { border: 1px solid #555b72; background: transparent; }
+    button.danger { border-color: #8a5160; color: #ffc4cc; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+    .hint, .status { font-size: .9rem; }
+    .status { min-height: 1.5em; margin: 10px 0 0; }
+    .status.error { color: #ff9eaa; }
+    .status.success { color: #9ee3bb; }
+    .metrics { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
+    .metric { border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; color: var(--muted); }
+    .metric strong { display: block; color: white; font-size: 1.35rem; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th, td { border-bottom: 1px solid var(--line); padding: 10px 12px; }
+    th { color: #c6bbff; font-size: .9rem; }
+    details summary { cursor: pointer; font-weight: 700; }
+    footer { margin-top: 28px; color: var(--muted); font-size: .85rem; }
+
+    @media (max-width: 560px) {
+      main { padding-top: 32px; }
+      .panel { padding: 17px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="eyebrow">Private, in-browser matching</div>
+      <h1>HAPPY OPENHEIMER</h1>
+      <p>Match identifiers against your own master list. Import, match, and export without sending your records to a server.</p>
+    </header>
+
+    <aside class="privacy">
+      <strong>Your data stays in this browser.</strong>
+      The master list is saved on this device only. Uploaded files are read locally and are not sent to GitHub or a database.
+    </aside>
+
+    <section class="panel" aria-labelledby="master-heading">
+      <h2 id="master-heading">Master database</h2>
+      <div class="metrics">
+        <div class="metric"><strong id="record-count">0</strong>Stored records on this device</div>
+      </div>
+      <label for="master-file">Add or update a master list (CSV, XLSX, XLS)</label>
+      <input id="master-file" type="file" accept=".csv,.xlsx,.xls">
+      <p class="hint">The file should include an ID column and a Name column. Matching IDs are updated; other records are retained.</p>
+      <p id="master-status" class="status" role="status" aria-live="polite"></p>
+      <details>
+        <summary>View records stored on this device</summary>
+        <div id="master-table" class="table-wrap"></div>
+      </details>
+      <div class="actions">
+        <button id="clear-master" class="secondary danger" type="button">Clear this device’s master list</button>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="paste-heading">
+      <h2 id="paste-heading">Match pasted IDs</h2>
+      <label for="pasted-ids">Paste IDs</label>
+      <textarea id="pasted-ids" placeholder="Paste or type one or more IDs, separated by spaces, commas, or new lines."></textarea>
+      <div class="actions">
+        <button id="match-pasted" type="button">Match pasted IDs</button>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="upload-heading">
+      <h2 id="upload-heading">Match IDs from a file</h2>
+      <label for="match-file">Upload XLSX, XLS, CSV, PDF, DOCX, or TXT</label>
+      <input id="match-file" type="file" accept=".xlsx,.xls,.csv,.pdf,.docx,.txt">
+      <p id="file-status" class="status" role="status" aria-live="polite"></p>
+    </section>
+
+    <section id="results" class="panel" aria-labelledby="results-heading" hidden>
+      <h2 id="results-heading">Matching results</h2>
+      <div class="metrics">
+        <div class="metric"><strong id="ids-count">0</strong>Unique IDs found</div>
+        <div class="metric"><strong id="matches-count">0</strong>Matches found</div>
+      </div>
+      <div id="results-table" class="table-wrap"></div>
+      <div class="actions">
+        <button id="download-results" type="button">Download matched Excel</button>
+        <button id="copy-results" class="secondary" type="button">Copy matched results</button>
+      </div>
+      <p id="results-status" class="status" role="status" aria-live="polite"></p>
+    </section>
+
+    <footer>HAPPY OPENHEIMER runs as a static site. Your browser’s local storage is separate from other users and devices.</footer>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://unpkg.com/mammoth@1.9.0/mammoth.browser.min.js"></script>
+  <script>
+    "use strict";
+
+    const STORAGE_KEY = "happy-openheimer-master-v1";
+    const ID_PATTERN = /\b[A-Z0-9]{5,20}\b/g;
+    let master = loadMaster();
+    let latestResults = [];
+    let latestIdCount = 0;
+
+    if (window.pdfjsLib) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    }
+
+    function normalizeId(value) {
+      return String(value ?? "").trim().toUpperCase();
+    }
+
+    function extractIds(text) {
+      return [...new Set((String(text).toUpperCase().match(ID_PATTERN) || []))];
+    }
+
+    function loadMaster() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        const parsed = saved ? JSON.parse(saved) : [];
+        if (!Array.isArray(parsed) || parsed.some(
+          (record) => !record || typeof record.id !== "string" || typeof record.name !== "string"
+        )) {
+          throw new Error("The saved master list has an invalid format. Clear it and import your list again.");
+        }
+        return parsed;
+      } catch (error) {
+        const status = document.getElementById("master-status");
+        status.textContent = error instanceof Error
+          ? `Could not load the saved master list: ${error.message}`
+          : "Could not load the saved master list.";
+        status.classList.add("error");
+        return [];
+      }
+    }
+
+    function saveMaster(records) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+        master = records;
+        renderMaster();
+      } catch (error) {
+        throw new Error(`Could not save the master list in this browser: ${error.message}`);
+      }
+    }
+
+    function makeTable(records, container) {
+      const table = document.createElement("table");
+      const head = table.createTHead().insertRow();
+      for (const label of ["NEO ID", "Name"]) {
+        const th = document.createElement("th");
+        th.scope = "col";
+        th.textContent = label;
+        head.append(th);
+      }
+      const body = table.createTBody();
+      for (const record of records) {
+        const row = body.insertRow();
+        row.insertCell().textContent = record.id;
+        row.insertCell().textContent = record.name;
+      }
+      container.replaceChildren(table);
+    }
+
+    function renderMaster() {
+      document.getElementById("record-count").textContent = String(master.length);
+      makeTable(master, document.getElementById("master-table"));
+    }
+
+    function findColumns(row) {
+      const columns = Object.keys(row);
+      const idColumn = columns.find((column) =>
+        /neo.*id|id.*neo/i.test(column) || /(^|[\s_-])id($|[\s_-])/i.test(column)
+      );
+      const nameColumn = columns.find((column) => /full.?name|name/i.test(column));
+      return { idColumn, nameColumn };
+    }
+
+    async function readWorkbook(file) {
+      if (!window.XLSX) throw new Error("The spreadsheet parser did not load. Check your connection and reload the page.");
+      const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
+      return workbook.SheetNames.map((sheetName) =>
+        XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: "" })
+      );
+    }
+
+    async function importMaster(file) {
+      const sheets = await readWorkbook(file);
+      let imported = 0;
+      const updates = new Map(master.map((record) => [record.id, record.name]));
+      for (const rows of sheets) {
+        if (!rows.length) continue;
+        const { idColumn, nameColumn } = findColumns(rows[0]);
+        if (!idColumn || !nameColumn) continue;
+        for (const row of rows) {
+          const id = normalizeId(row[idColumn]);
+          const name = String(row[nameColumn] ?? "").trim();
+          if (id && name) {
+            updates.set(id, name);
+            imported += 1;
+          }
+        }
+      }
+      if (!imported) throw new Error("Could not identify ID and Name columns with any records in this file.");
+      const updatedMaster = [...updates].sort(([left], [right]) => left.localeCompare(right))
+        .map(([id, name]) => ({ id, name }));
+      saveMaster(updatedMaster);
+      return imported;
+    }
+
+    function showMatches(ids) {
+      latestIdCount = ids.length;
+      const lookup = new Map(master.map((record) => [record.id, record.name]));
+      latestResults = ids.filter((id) => lookup.has(id))
+        .map((id) => ({ id, name: lookup.get(id) }));
+      document.getElementById("ids-count").textContent = String(ids.length);
+      document.getElementById("matches-count").textContent = String(latestResults.length);
+      makeTable(latestResults, document.getElementById("results-table"));
+      document.getElementById("results-status").textContent = "";
+      document.getElementById("results").hidden = false;
+    }
+
+    async function extractFileIds(file) {
+      const filename = file.name.toLowerCase();
+      if (filename.endsWith(".txt")) {
+        return extractIds(await file.text());
+      }
+      if (filename.endsWith(".pdf")) {
+        if (!window.pdfjsLib) throw new Error("The PDF parser did not load. Check your connection and reload the page.");
+        const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+        const pages = await Promise.all(Array.from({ length: pdf.numPages }, async (_, index) => {
+          const page = await pdf.getPage(index + 1);
+          const content = await page.getTextContent();
+          return content.items.map((item) => item.str || "").join(" ");
+        }));
+        return extractIds(pages.join("\n"));
+      }
+      if (filename.endsWith(".docx")) {
+        if (!window.mammoth) throw new Error("The document parser did not load. Check your connection and reload the page.");
+        const result = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
+        return extractIds(result.value);
+      }
+      const sheets = await readWorkbook(file);
+      const ids = [];
+      for (const rows of sheets) {
+        if (!rows.length) continue;
+        const sheetIds = [];
+        const { idColumn } = findColumns(rows[0]);
+        if (idColumn) {
+          for (const row of rows) {
+            const id = normalizeId(row[idColumn]);
+            if (/^[A-Z0-9]{5,20}$/.test(id)) sheetIds.push(id);
+          }
+        }
+        if (!sheetIds.length) {
+          sheetIds.push(...extractIds(rows.flatMap((row) => Object.values(row)).join(" ")));
+        }
+        ids.push(...sheetIds);
+      }
+      return [...new Set(ids)];
+    }
+
+    function setStatus(element, message, isError = false) {
+      element.textContent = message;
+      element.classList.toggle("error", isError);
+      element.classList.toggle("success", !isError && Boolean(message));
+    }
+
+    document.getElementById("master-file").addEventListener("change", async (event) => {
+      const [file] = event.target.files;
+      if (!file) return;
+      const status = document.getElementById("master-status");
+      setStatus(status, "Reading master list…");
+      try {
+        const count = await importMaster(file);
+        setStatus(status, `Added or updated ${count} records on this device.`);
+      } catch (error) {
+        setStatus(status, error.message, true);
+      } finally {
+        event.target.value = "";
+      }
+    });
+
+    document.getElementById("clear-master").addEventListener("click", () => {
+      if (!master.length || !window.confirm("Clear all master records saved in this browser? This cannot be undone.")) return;
+      try {
+        saveMaster([]);
+        setStatus(document.getElementById("master-status"), "This device’s master list has been cleared.");
+      } catch (error) {
+        setStatus(document.getElementById("master-status"), error.message, true);
+      }
+    });
+
+    document.getElementById("match-pasted").addEventListener("click", () => {
+      showMatches(extractIds(document.getElementById("pasted-ids").value));
+    });
+
+    document.getElementById("match-file").addEventListener("change", async (event) => {
+      const [file] = event.target.files;
+      if (!file) return;
+      const status = document.getElementById("file-status");
+      setStatus(status, "Reading file in this browser…");
+      try {
+        const ids = await extractFileIds(file);
+        showMatches(ids);
+        setStatus(status, `Found ${ids.length} unique IDs in ${file.name}.`);
+      } catch (error) {
+        setStatus(status, error.message, true);
+      } finally {
+        event.target.value = "";
+      }
+    });
+
+    document.getElementById("download-results").addEventListener("click", () => {
+      if (!window.XLSX) {
+        setStatus(document.getElementById("results-status"), "The spreadsheet exporter did not load. Check your connection and reload the page.", true);
+        return;
+      }
+      const worksheet = XLSX.utils.json_to_sheet(latestResults.map((record) => ({
+        "NEO ID": record.id,
+        Name: record.name
+      })));
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Matched");
+      XLSX.writeFile(workbook, "happy_openheimer_matched_result.xlsx");
+    });
+
+    document.getElementById("copy-results").addEventListener("click", async () => {
+      const rows = [["NEO ID", "Name"], ...latestResults.map((record) => [record.id, record.name])];
+      try {
+        await navigator.clipboard.writeText(rows.map((row) => row.join("\t")).join("\n"));
+        setStatus(document.getElementById("results-status"), "Matched results copied to the clipboard.");
+      } catch (error) {
+        setStatus(document.getElementById("results-status"), `Could not copy results: ${error.message}`, true);
+      }
+    });
+
+    renderMaster();
+  </script>
+</body>
+</html>
